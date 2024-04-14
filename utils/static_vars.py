@@ -1,0 +1,1 @@
+MONGODB_PATH = "mongodb://localhost:27017"
