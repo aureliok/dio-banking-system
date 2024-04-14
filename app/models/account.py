@@ -1,5 +1,6 @@
 from pymongo import MongoClient
 from decimal import Decimal
+from typing import List
 
 from app.models.user import User
 from utils.AccountIdGenerator import AccountIdGenerator
@@ -16,11 +17,12 @@ class Account:
     def set_database(cls, db):
         cls._db = db
 
-    def __init__(self, user_document: str, initial_balance: Decimal=0, is_frozen: bool=False):
-        self.account_id: int = None
+    def __init__(self, user_document: str, balance: Decimal=0, is_frozen: bool=False, account_id: str=None):
+        self.account_id: str = account_id
         self.user_document: str = user_document
-        self.balance: Decimal = initial_balance
+        self.balance: Decimal = balance
         self.is_frozen: bool = is_frozen
+        self.transaction_history = List[dict] = []
 
 
     def create(self) -> int:
@@ -66,6 +68,10 @@ class Account:
         self.is_frozen = False
         self._db.accounts.update_one({"account_id": self.account_id},
                                      {"$set": {"is_frozen": self.is_frozen}})
+        
+    
+    def balance_check(self) -> Decimal:
+        return self.balance
 
     
     def deposit(self, value) -> None:
@@ -100,6 +106,14 @@ class Account:
                                              {"$set": {"balance": recipient["balance"]}})
                 
                 session.commit_transaction()
+
+
+    def add_transaction(self):
+        pass
+
+
+    def get_transaction_history(self):
+        pass
                 
         
     @staticmethod
@@ -109,4 +123,5 @@ class Account:
     @staticmethod
     def find_by_document_id(document_id):
         return Account._db.accounts.find_one({"user_document": document_id}) 
+    
 

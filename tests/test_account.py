@@ -4,12 +4,15 @@ from app.models.account import Account
 from app.models.user import User
 
 from utils.static_vars import MONGODB_PATH
+from app.database.mongodb import *
 
 
 @pytest.fixture
 def db():
     client = MongoClient(MONGODB_PATH)
     db = client.test_bank
+    create_accounts_indexes(db)
+    create_users_indexes(db)
     User.set_database(db)
     Account.set_database(db)
     yield db
@@ -85,6 +88,20 @@ def test_unfreeze_account(db, default_account, default_user):
     updated_account = Account.find_by_account_id(account.account_id)
     
     assert updated_account["is_frozen"] == False
+
+
+def test_balance_check(db, default_account, default_user):
+    default_user.create()
+    default_account.create()
+    account_data = Account.find_by_document_id("123456789")
+    del account_data["_id"]
+    del account_data["accounts"]
+    print(account_data)
+    account = Account(**account_data)
+
+    balance = account.balance_check()
+
+    assert balance == 50
 
 
 def test_deposit(db, default_account, default_user):
@@ -184,3 +201,11 @@ def test_find_by_account_id_account_doesnt_exist(db):
     account = Account.find_by_account_id("15431051478")
 
     assert account is None
+
+
+def test_add_transaction(self):
+    raise NotImplementedError()
+
+
+def test_get_transaction_history(self):
+    raise NotImplementedError()
