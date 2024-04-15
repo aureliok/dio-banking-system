@@ -1,4 +1,5 @@
 from pymongo import MongoClient
+from datetime import datetime
 from decimal import Decimal
 from typing import List
 
@@ -17,12 +18,14 @@ class Account:
     def set_database(cls, db):
         cls._db = db
 
-    def __init__(self, user_document: str, balance: Decimal=0, is_frozen: bool=False, account_id: str=None):
+    def __init__(self, user_document: str, balance: Decimal=0, is_frozen: bool=False, account_id: str=None, last_date_transactions_count: int=0, last_date_transaction: str=datetime.today().strftime("%d-%m-%Y")):
         self.account_id: str = account_id
         self.user_document: str = user_document
         self.balance: Decimal = balance
         self.is_frozen: bool = is_frozen
-        self.transaction_history = List[dict] = []
+        self.transaction_history: List[dict] = []
+        self.last_date_transactions_count: int = last_date_transactions_count
+        self.last_date_transaction: str = last_date_transaction
 
 
     def create(self) -> int:
@@ -38,12 +41,18 @@ class Account:
             "account_id": self.account_id,
             "user_document": self.user_document,
             "balance": self.balance,
-            "is_frozen": self.is_frozen
+            "is_frozen": self.is_frozen,
+            "last_date_transactions_count": self.last_date_transactions_count,
+            "last_date_transaction": self.last_date_transaction
         }
 
         with MongoClient(MONGODB_PATH).start_session() as session:
             with session.start_transaction():
                 inserted_id = self._db.accounts.insert_one(account_data).inserted_id
+                self._db.transactions_history.insert_one({
+                    "account_id": self.account_id,
+                    "transactions": self.transaction_history
+                })
 
                 session.commit_transaction()
         
@@ -97,31 +106,66 @@ class Account:
             with session.start_transaction():
                 recipient = Account.find_by_account_id(to_account)
                 self.balance -= value
-                recipient["balance"] += value
+                recipient.balance += value
 
                 self._db.accounts.update_one({"account_id": self.account_id},
                                              {"$set": {"balance": self.balance}})
                 
-                self._db.accounts.update_one({"account_id": recipient["account_id"]},
-                                             {"$set": {"balance": recipient["balance"]}})
+                self._db.accounts.update_one({"account_id": recipient.account_id},
+                                             {"$set": {"balance": recipient.balance}})
                 
                 session.commit_transaction()
 
 
-    def add_transaction(self):
-        pass
+    def add_transaction(self, transaction_type: str, value: Decimal=None, counterpart: str=None):
+        transaction_data = {
+            "timestamp": datetime.now(),
+            "type": transaction_type,
+            "value": value,
+            "counterpart": counterpart
+        }
+
+        self.transaction_history.append(transaction_data)
+        self._db.transactions_history.update_one({"account_id": self.account_id},
+                                                  {"$push": {"transactions": transaction_data}},
+                                                  upsert=True)
 
 
     def get_transaction_history(self):
-        pass
+        transactions = self._db.transactions_history.find_one({"account_id": self.account_id})
+        return transactions
+    
+
+    def update_transaction_count(self):
+        today = datetime.today().strftime("%d-%m-%Y")
+        if self.last_date_transaction == today:
+            self.last_date_transactions_count += 1
+        else:
+            self.last_date_transactions_count = 1
+
+        self._db.accounts.update_one({"user_document": self.user_document},
+                                     {"$set": {"last_date_transactions_count": self.last_date_transactions_count,
+                                               "last_date_transaction": today}})
                 
         
     @staticmethod
     def find_by_account_id(account_id):
-        return Account._db.accounts.find_one({"account_id": account_id})
+        account =  Account._db.accounts.find_one({"account_id": account_id})
+        if account:
+            del account["_id"]
+            return Account(**account)
+        
+        return None
+
     
     @staticmethod
     def find_by_document_id(document_id):
-        return Account._db.accounts.find_one({"user_document": document_id}) 
+        account = Account._db.accounts.find_one({"user_document": document_id}) 
+        if account:
+            del account["_id"]
+            return Account(**account)
+        
+        return None
+            
     
 

@@ -1,5 +1,6 @@
 import pytest
 from pymongo import MongoClient
+from datetime import datetime
 from app.models.account import Account
 from app.models.user import User
 
@@ -13,6 +14,7 @@ def db():
     db = client.test_bank
     create_accounts_indexes(db)
     create_users_indexes(db)
+    create_accounts_indexes(db)
     User.set_database(db)
     Account.set_database(db)
     yield db
@@ -76,7 +78,7 @@ def test_freeze_account(db, default_account, default_user):
     account.freeze()
     updated_account = Account.find_by_account_id(account.account_id)
     
-    assert updated_account["is_frozen"] == True
+    assert updated_account.is_frozen == True
 
 
 def test_unfreeze_account(db, default_account, default_user):
@@ -87,17 +89,13 @@ def test_unfreeze_account(db, default_account, default_user):
     account.unfreeze()
     updated_account = Account.find_by_account_id(account.account_id)
     
-    assert updated_account["is_frozen"] == False
+    assert updated_account.is_frozen == False
 
 
 def test_balance_check(db, default_account, default_user):
     default_user.create()
     default_account.create()
-    account_data = Account.find_by_document_id("123456789")
-    del account_data["_id"]
-    del account_data["accounts"]
-    print(account_data)
-    account = Account(**account_data)
+    account = Account.find_by_document_id("123456789")
 
     balance = account.balance_check()
 
@@ -112,7 +110,7 @@ def test_deposit(db, default_account, default_user):
     account.deposit(50)
     updated_account = Account.find_by_account_id(account.account_id)
 
-    assert updated_account["balance"] == 100
+    assert updated_account.balance == 100
 
 
 def test_withdraw_with_balance(db, default_account, default_user):
@@ -123,7 +121,7 @@ def test_withdraw_with_balance(db, default_account, default_user):
     account.withdraw(20.5)
     updated_account = Account.find_by_account_id(account.account_id)
 
-    assert updated_account["balance"] == 29.5
+    assert updated_account.balance == 29.5
 
 
 def test_withdraw_with_nobalance(db, default_account, default_user):
@@ -134,7 +132,7 @@ def test_withdraw_with_nobalance(db, default_account, default_user):
     account.withdraw(70)
     updated_account = Account.find_by_account_id(account.account_id)
 
-    assert updated_account["balance"] == 50
+    assert updated_account.balance == 50
 
 
 def test_transfer_with_balance(db, default_account, default_user):
@@ -151,8 +149,8 @@ def test_transfer_with_balance(db, default_account, default_user):
     updated_account1 = Account.find_by_account_id(account1.account_id)
     updated_account2 = Account.find_by_account_id(account2.account_id)
 
-    assert updated_account1["balance"] == 20
-    assert updated_account2["balance"] == 90
+    assert updated_account1.balance == 20
+    assert updated_account2.balance == 90
 
 
 def test_transfer_with_nobalance(db, default_account, default_user):
@@ -169,8 +167,8 @@ def test_transfer_with_nobalance(db, default_account, default_user):
     updated_account1 = Account.find_by_account_id(account1.account_id)
     updated_account2 = Account.find_by_account_id(account2.account_id)
 
-    assert updated_account1["balance"] == 50
-    assert updated_account2["balance"] == 60
+    assert updated_account1.balance == 50
+    assert updated_account2.balance == 60
 
 
 def test_find_by_document_id_account_exists(db, default_account, default_user):
@@ -203,9 +201,62 @@ def test_find_by_account_id_account_doesnt_exist(db):
     assert account is None
 
 
-def test_add_transaction(self):
-    raise NotImplementedError()
+def test_add_transaction_withdrawal(db, default_user, default_account):
+    _ = default_user.create()
+    account = default_account
+    account.create()
+
+    account.add_transaction("Withdrawal", 10)
+
+    assert len(account.transaction_history) == 1
+    assert "timestamp" in account.transaction_history[0].keys()
+    assert account.transaction_history[0]["type"] == "Withdrawal"
+    assert account.transaction_history[0]["value"] == 10
 
 
-def test_get_transaction_history(self):
-    raise NotImplementedError()
+def test_add_transaction_transfer(db, default_user, default_account):
+    _ = default_user.create()
+    account = default_account
+    account.create()
+
+    account.add_transaction("Transfer-In", 10, "123456789")
+
+    assert len(account.transaction_history) == 1
+    assert "timestamp" in account.transaction_history[0].keys()
+    assert account.transaction_history[0]["type"] == "Transfer-In"
+    assert account.transaction_history[0]["value"] == 10
+    assert account.transaction_history[0]["counterpart"] == "123456789"
+
+
+def test_get_transaction_history_with_past_transactions(db, default_user, default_account):
+    _ = default_user.create()
+    account = default_account
+    account.create()
+    account.add_transaction("Transfer-In", 10, "123456789") 
+
+    transactions = account.get_transaction_history()
+    print(transactions)
+    
+    assert len(transactions["transactions"]) == 1 
+
+
+def test_get_transaction_history_with_no_past_transactions(db, default_user, default_account):
+    _ = default_user.create()
+    account = default_account
+    account.create()
+
+    transactions = account.get_transaction_history()
+    
+    assert len(transactions["transactions"]) == 0
+
+
+def test_update_transaction_count(db, default_user, default_account):
+    _ = default_user.create()
+    account = default_account
+    account.create()
+
+    account.update_transaction_count()
+    updated_account = Account.find_by_document_id("123456789")
+
+    assert updated_account.last_date_transactions_count == 1
+    assert updated_account.last_date_transaction == datetime.today().strftime("%d-%m-%Y")

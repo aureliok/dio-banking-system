@@ -30,6 +30,16 @@ class User:
         }
 
         return self._db.users.insert_one(user_data).inserted_id
+    
+
+    def update(self, data):
+        update_data = {key: value for key, value in data.items() if key != "document_id"}
+        print(update_data)
+
+        if update_data:
+            print(update_data)
+            self._db.users.update_one({"document_id": self.document_id},
+                                      {"$set": update_data})
          
     
     def delete(self):
@@ -37,8 +47,20 @@ class User:
     
     @staticmethod
     def find_by_name(firstname: str, lastname: str):
-        return User._db.users.find_one({"firstname": firstname, "lastname": lastname})
+        user = User._db.users.find_one({"firstname": firstname, "lastname": lastname})
+        if user:
+            del user["_id"]
+            return User(**user)
+        
+        return None
+
     
     @staticmethod
     def find_by_document(document_id: str):
-        return User._db.users.find_one({"document_id": document_id})
+        user = User._db.users.find_one({"document_id": document_id})
+        if user:
+            del user["_id"]
+            return User(**user)
+        
+        return None
+            
