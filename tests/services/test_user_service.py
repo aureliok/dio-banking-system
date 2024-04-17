@@ -72,7 +72,7 @@ def test_service_delete_user_valid_data(db, default_user):
 
 def test_service_delete_user_invalid_data(db, default_user):
     service = UserService(db)
-    user_data = service.create_user(default_user)
+    _ = service.create_user(default_user)
     default_user.firstname = None
 
     with pytest.raises(Exception):
@@ -81,7 +81,7 @@ def test_service_delete_user_invalid_data(db, default_user):
     
 def test_service_get_user_info(db, default_user):
     service = UserService(db)
-    user_data = service.create_user(default_user)
+    _ = service.create_user(default_user)
 
     user_info = service.get_user_info("123456789")
 

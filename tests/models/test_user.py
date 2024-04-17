@@ -29,7 +29,7 @@ def test_create_user(db, default_user):
 
 
 def test_update_user_all_properties(db, default_user):
-    user_id = default_user.create()
+    _ = default_user.create()
     data = {
         "phone": "99 8888 7777",
         "email": "changedemail@email.com"
@@ -43,7 +43,7 @@ def test_update_user_all_properties(db, default_user):
 
 
 def test_update_user_partial_properties(db, default_user):
-    user_id = default_user.create()
+    _ = default_user.create()
     data = {
         "phone": "99 8888 7777",
     }

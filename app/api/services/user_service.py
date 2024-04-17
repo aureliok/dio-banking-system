@@ -1,6 +1,5 @@
 from app.models.user import User
 from app.schemas.user_schemas import *
-from app.models.account import Account
 
 
 class UserService:
@@ -10,12 +9,14 @@ class UserService:
     def create_user(self, user_data: UserData) -> None:
         user = User(**user_data.to_dict())
         user.create()
+        
 
     def update_user(self, update_data: UserUpdate) -> None:
         user = User.find_by_document(update_data.document_id)
 
         update_data = {key:value for key, value in update_data.to_dict().items() if value is not None}
         user.update(update_data)
+
 
     def delete_user(self, user_data: UserData) -> None:
         user = User.find_by_document(user_data.document_id)

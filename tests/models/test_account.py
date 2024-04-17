@@ -20,6 +20,7 @@ def db():
     yield db
 
     db.users.delete_many({})
+    db.accounts.delete_many({})
     client.close()
 
 @pytest.fixture
@@ -237,7 +238,7 @@ def test_get_transaction_history_with_past_transactions(db, default_user, defaul
     transactions = account.get_transaction_history()
     print(transactions)
     
-    assert len(transactions["transactions"]) == 1 
+    assert len(transactions) == 1 
 
 
 def test_get_transaction_history_with_no_past_transactions(db, default_user, default_account):
@@ -247,7 +248,7 @@ def test_get_transaction_history_with_no_past_transactions(db, default_user, def
 
     transactions = account.get_transaction_history()
     
-    assert len(transactions["transactions"]) == 0
+    assert len(transactions) == 0
 
 
 def test_update_transaction_count(db, default_user, default_account):
@@ -255,8 +256,8 @@ def test_update_transaction_count(db, default_user, default_account):
     account = default_account
     account.create()
 
-    account.update_transaction_count()
+    account.update_transaction_count(datetime.today().strftime("%Y-%m-%d %H:%M:%S"))
     updated_account = Account.find_by_document_id("123456789")
 
     assert updated_account.last_date_transactions_count == 1
-    assert updated_account.last_date_transaction == datetime.today().strftime("%d-%m-%Y")
+    assert updated_account.last_date_transaction.strftime("%d-%m-%Y") == datetime.today().strftime("%d-%m-%Y")

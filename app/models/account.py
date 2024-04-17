@@ -18,10 +18,14 @@ class Account:
     def set_database(cls, db):
         cls._db = db
 
-    def __init__(self, user_document: str, balance: Decimal=0, is_frozen: bool=False, account_id: str=None, last_date_transactions_count: int=0, last_date_transaction: str=datetime.today().strftime("%d-%m-%Y")):
+    def __init__(self, user_document: str, balance: Decimal=0, 
+                 is_frozen: bool=False, account_id: str=None, 
+                 last_date_transactions_count: int=0, 
+                 last_date_transaction: str=datetime.today().strftime("%d-%m-%Y")):
+        
         self.account_id: str = account_id
         self.user_document: str = user_document
-        self.balance: Decimal = balance
+        self.balance: float = balance
         self.is_frozen: bool = is_frozen
         self.transaction_history: List[dict] = []
         self.last_date_transactions_count: int = last_date_transactions_count
@@ -60,9 +64,10 @@ class Account:
     
 
     def delete(self) -> int:
-        if self.balance > 0:
+        if Decimal(self.balance) > 0:
             return 0
         
+        print(self.account_id)
         delete_result = self._db.accounts.delete_one({"account_id": self.account_id})
         return delete_result.deleted_count
 
@@ -79,7 +84,7 @@ class Account:
                                      {"$set": {"is_frozen": self.is_frozen}})
         
     
-    def balance_check(self) -> Decimal:
+    def balance_check(self) -> float:
         return self.balance
 
     
@@ -98,7 +103,7 @@ class Account:
                                      {"$set": {"balance": self.balance}})
         
     
-    def transfer(self, to_account, value) -> None:
+    def transfer(self, to_account: str, value) -> None:
         if value > self.balance:
             return
         
@@ -117,9 +122,9 @@ class Account:
                 session.commit_transaction()
 
 
-    def add_transaction(self, transaction_type: str, value: Decimal=None, counterpart: str=None):
+    def add_transaction(self, transaction_type: str, value: float=None, counterpart: str=None, transaction_time: str=datetime.now().strftime("%Y-%m-%d %H:%M:%S")):
         transaction_data = {
-            "timestamp": datetime.now(),
+            "timestamp": datetime.strptime(transaction_time, "%Y-%m-%d %H:%M:%S"),
             "type": transaction_type,
             "value": value,
             "counterpart": counterpart
@@ -133,19 +138,19 @@ class Account:
 
     def get_transaction_history(self):
         transactions = self._db.transactions_history.find_one({"account_id": self.account_id})
-        return transactions
+        return [t for t in transactions["transactions"]]
     
 
-    def update_transaction_count(self):
-        today = datetime.today().strftime("%d-%m-%Y")
-        if self.last_date_transaction == today:
+    def update_transaction_count(self, transaction_datetime: str):
+        transaction_date = datetime.strptime(transaction_datetime, "%Y-%m-%d %H:%M:%S")
+        if self.last_date_transaction == transaction_date:
             self.last_date_transactions_count += 1
         else:
             self.last_date_transactions_count = 1
 
         self._db.accounts.update_one({"user_document": self.user_document},
                                      {"$set": {"last_date_transactions_count": self.last_date_transactions_count,
-                                               "last_date_transaction": today}})
+                                               "last_date_transaction": transaction_date}})
                 
         
     @staticmethod
