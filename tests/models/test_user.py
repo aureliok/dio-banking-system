@@ -28,6 +28,34 @@ def test_create_user(db, default_user):
     assert user_id is not None
 
 
+def test_update_user_all_properties(db, default_user):
+    _ = default_user.create()
+    data = {
+        "phone": "99 8888 7777",
+        "email": "changedemail@email.com"
+    }
+
+    default_user.update(data)
+    changed_user = User.find_by_document("123456789")
+
+    assert changed_user.phone == "99 8888 7777"
+    assert changed_user.email == "changedemail@email.com"
+
+
+def test_update_user_partial_properties(db, default_user):
+    _ = default_user.create()
+    data = {
+        "phone": "99 8888 7777",
+    }
+
+    default_user.update(data)
+    changed_user = User.find_by_document("123456789")
+
+    assert changed_user.phone == "99 8888 7777"
+    assert changed_user.email == "john@email.com"
+    
+
+
 def test_delete_user(db, default_user):
     user = default_user
     _ = user.create()
@@ -41,9 +69,9 @@ def test_find_by_name_user_exists(db, default_user):
     found_user = User.find_by_name("John", "Doe")
 
     assert found_user is not None
-    assert found_user["document_id"] == "123456789"
-    assert found_user["firstname"] == "John"
-    assert found_user["lastname"] == "Doe"
+    assert found_user.document_id == "123456789"
+    assert found_user.firstname == "John"
+    assert found_user.lastname == "Doe"
 
 
 def test_find_by_name_user_doesnt_exist(db):
@@ -57,9 +85,9 @@ def test_find_by_document_user_exists(db, default_user):
     found_user = User.find_by_document("123456789")
 
     assert found_user is not None
-    assert found_user["document_id"] == "123456789"
-    assert found_user["firstname"] == "John"
-    assert found_user["lastname"] == "Doe"
+    assert found_user.document_id == "123456789"
+    assert found_user.firstname == "John"
+    assert found_user.lastname == "Doe"
 
 
 def test_find_by_document_user_doesnt_exist(db):
