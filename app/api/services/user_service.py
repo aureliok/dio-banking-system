@@ -30,6 +30,8 @@ class UserService:
 
     def get_user_info(self, document_id: str) -> UserData:
         user = User.find_by_document(document_id)
+        if not user:
+            raise FileNotFoundError()
 
         return UserData(**user.__dict__)
         

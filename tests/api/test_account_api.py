@@ -12,7 +12,7 @@ from app.api.services.account_service import AccountService
 from app.schemas.user_schemas import *
 from app.schemas.account_schemas import *
 from utils.static_vars import MONGODB_PATH
-from app.database.mongodb import *
+from pymongo import MongoClient
 from typing import List
 
 
